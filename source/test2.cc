@@ -7,13 +7,13 @@ void test3 ();
 
 int add_data (FILE *src, int numrecs, int &res) {
 	DBFile dbfile;
-	cout << "opening" << endl;
+	// cout << "opening" << endl;
 	dbfile.Open (rel->path ());
 	Record temp;
 
 	int proc = 0;
 	int xx = 20000;
-	cout << "Adding records" << endl;
+	// cout << "Adding records" << endl;
 	while ((res = temp.SuckNextRecord (rel->schema (), src)) && ++proc < numrecs) {
 		dbfile.Add (temp);
 		if (proc == xx) cerr << "\t ";
@@ -31,8 +31,8 @@ void test1 () {
 
 	OrderMaker o;
 	rel->get_sort_order (o);
-	cout << "Printing ordermaker" << endl;
-	o.Print();
+	// cout << "Printing ordermaker" << endl;
+	// o.Print();
 
 	int runlen = 0;
 	while (runlen < 1) {
@@ -98,7 +98,7 @@ void test2 () {
 	int cnt = 0;
 	cerr << "\t";
 	while (dbfile.GetNext (temp) && ++cnt) {
-		// temp.Print (rel->schema());
+		temp.Print (rel->schema());
 		if (!(cnt % 10000)) {
 			cerr << ".";
 		}

@@ -172,53 +172,165 @@ int ComparisonEngine :: Compare (Record *left, Record *literal, CNF *myCompariso
 	return 1;	
 }
 
+
+int ComparisonEngine :: CompareRun (Record *left, Record *literal, Comparison *c) {
+
+	char *val1, *val2;
+
+	char *left_bits = left->GetBits();
+	char *lit_bits = literal->GetBits();
+	int flag = 0;
+	// first get a pointer to the first value to compare
+	if (c->operand1 == Left) {
+		flag = 1;
+		val1 = left_bits + ((int *) left_bits)[c->whichAtt1 + 1];
+	} else {
+		flag = -1;
+		val1 = lit_bits + ((int *) lit_bits)[c->whichAtt1 + 1];
+	}
+
+	// next get a pointer to the second value to compare
+	if (c->operand2 == Left) {
+		val2 = left_bits + ((int *) left_bits)[c->whichAtt2 + 1];
+	} else {
+		val2 = lit_bits + ((int *) lit_bits)[c->whichAtt2 + 1];
+	}
+
+
+	int val1Int, val2Int, tempResult;
+	double val1Double, val2Double;
+
+	// now check the type and the comparison operation
+	switch (c->attType) {
+
+		// first case: we are dealing with integers
+		case Int:
+
+		val1Int = *((int *) val1);
+		val2Int = *((int *) val2);
+
+		// and check the operation type in order to actually do the comparison
+		if(val1Int < val2Int){
+			return -1*(flag);
+		}
+		else if(val1Int > val2Int){
+			return 1*(flag);
+		}else{
+			return 0;
+		}
+		// switch (c->op) {
+				
+		// 	case LessThan:
+		// 	return (val1Int < val2Int);
+		// 	break;
+
+		// 	case GreaterThan:
+		// 	return (val1Int > val2Int);
+		// 	break;
+					
+		// 	default:
+		// 	return (val1Int == val2Int);
+		// 	break;	
+		// }	
+		break;
+
+		// second case: dealing with doubles
+		case Double:
+		val1Double = *((double *) val1);
+		val2Double = *((double *) val2);
+
+		
+		if(val1Double < val2Double){
+			return -1*(flag);
+		}
+		else if(val1Double > val2Double){
+			return 1*(flag);
+		}else{
+			return 0;
+		}
+
+		// and check the operation type in order to actually do the comparison
+		// switch (c->op) {
+						
+		// 	case LessThan:
+		// 	return (val1Double < val2Double);
+		// 	break;
+
+		// 	case GreaterThan:
+		// 	return (val1Double > val2Double);
+		// 	break;
+					
+		// 	default:
+		// 	return (val1Double == val2Double);
+		// 	break;	
+		// }	
+		break;
+
+		// final case: dealing with strings
+		default:
+
+		// so check the operation type in order to actually do the comparison
+		tempResult = strcmp (val1, val2);
+		// cout << val1 << endl;
+		// cout << val2 << endl;
+		// cout << "Flag " << flag << " compare " << tempResult << endl;
+		if(tempResult < 0){
+			return -1*(flag);
+		}
+		else if(tempResult > 0){
+			return 1*(flag);
+		}else{
+			return 0;
+		}
+
+		// switch (c->op) {
+						
+		// 	case LessThan:
+		// 	return tempResult < 0;
+		// 	break;
+
+		// 	case GreaterThan:
+		// 	return tempResult > 0;
+		// 	break;
+					
+		// 	default:
+		// 	return tempResult == 0;
+		// 	break;	
+		// }	
+		break;
+	}
+
+}
+
+
+
 // this is for binary search
 int ComparisonEngine ::CompareSort(Record * left, Record * literal, OrderMaker * query, CNF * myComparison){
 	int flag = 0;
-	for (int i = 0; i < myComparison->numAnds; i++) {
-
-		for (int j = 0; j < myComparison->orLens[i]; j++) {
-
-			// this returns a 0 if the comparison did not eval to true
-			if((&myComparison->orList[i][j])->operand1 == Literal){
-				for (int k = 0; k < query->numAtts; k++){
+	for (int k = 0; k < query->numAtts; k++){
+		for (int i = 0; i < myComparison->numAnds; i++) {
+			for (int j = 0; j < myComparison->orLens[i]; j++) {
+				if((&myComparison->orList[i][j])->operand1 == Literal){
 					if((&myComparison->orList[i][j])->whichAtt2 == query->whichAtts[k]){
 						flag = 1;
 					}
 				}
-				
-			}
-			else{
-				for (int k = 0; k < query->numAtts; k++){
+				else{
 					if((&myComparison->orList[i][j])->whichAtt1 == query->whichAtts[k]){
 						flag = 1;
 					}
 				}
-			}
-
-			if(flag == 1){
-				int result = Run(left, literal, &myComparison->orList[i][j]);
-				flag = 0;
-				if (result != 0) {
-					break;	
+				if(flag){
+					int result = CompareRun(left, literal, &myComparison->orList[i][j]);
+					flag = 0;
+					if(result != 0){
+						return result;
+					}
 				}
 			}
-			
-			
-			// if we made it through all of the comparisons without a hit, return a 0
-			if (j == myComparison->orLens[i] - 1) {
-				return 0;
-			}
-
 		}
-
-		// this ends the for-loop for the OR-list... if we made it this far, then we'll go on to the
-		// next disjunction in the overall CNF expression
 	}
-
-	// this ends the for-loop for the AND-list... if we made it this far, then we know that we
-	// have satisfied the overall CNF expression
-	return 1;	
+	return 0;
 }
 
 // this is just like the last one, except that it deals with a pair of records

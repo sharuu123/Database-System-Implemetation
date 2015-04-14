@@ -23,7 +23,7 @@ int DBFile::Create (char *f_path, fType f_type, void *startup) {
 	char name[100];
 	sprintf(name, "%s.metadata", f_path);
 	ofstream myfile;
-	cout << "open metadata dile, f_type = " << f_type << endl;
+	// cout << "open metadata dile, f_type = " << f_type << endl;
 	myfile.open(name);
 	// myfile << f_type << endl;
 	myfile.write ( (char *)(&f_type), sizeof(int) );
@@ -37,8 +37,8 @@ int DBFile::Create (char *f_path, fType f_type, void *startup) {
 		// myfile << t.l << endl;
 		myfile.write ( (char *)(&(t.l)), sizeof(int) );
 		OrderMaker order = *(OrderMaker*)(t.o);
-		cout << "DBFile::Create() - " << endl;
-		order.Print();
+		// cout << "DBFile::Create() - " << endl;
+		// order.Print();
 		myfile.write ( (char *)(&order), sizeof(OrderMaker) );
 		// myfile << order;
 		myInternalVar = new SortedFile;
@@ -61,7 +61,7 @@ int DBFile::Open (char *fpath){
 	myfile.open(name);
 	// myfile >> type;
 	myfile.read ( (char *)&type, sizeof(int) );
-	cout << "DBFile::Open - " << type << endl;
+	// cout << "DBFile::Open - " << type << endl;
 	if(type == 0){
 		myInternalVar = new HeapFile;
 	} else {

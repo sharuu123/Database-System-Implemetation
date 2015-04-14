@@ -2,7 +2,6 @@
 #include <iostream>
 #include <stdlib.h>
 #include <string.h>
-
 #include "Comparison.h"
 
 
@@ -118,7 +117,6 @@ void OrderMaker :: Print () {
 }
 
 
-
 int CNF :: GetSortOrders (OrderMaker &left, OrderMaker &right) {
 
 	// initialize the size of the OrderMakers
@@ -132,18 +130,18 @@ int CNF :: GetSortOrders (OrderMaker &left, OrderMaker &right) {
 		// if we don't have a disjunction of length one, then it
 		// can't be acceptable for use with a sort ordering
 		if (orLens[i] != 1) {
-			// continue;
+			continue;
 		}
 
 		// made it this far, so first verify that it is an equality check
 		if (orList[i][0].op != Equals) {
-			// continue;
+			continue;
 		}
 
 		// now verify that it operates over atts from both tables
 		if (!((orList[i][0].operand1 == Left && orList[i][0].operand2 == Right) ||
 		      (orList[i][0].operand2 == Left && orList[i][0].operand1 == Right))) {
-			// continue;		
+			//continue;		
 		}
 
 		// since we are here, we have found a join attribute!!!
@@ -175,7 +173,6 @@ int CNF :: GetSortOrders (OrderMaker &left, OrderMaker &right) {
 	}
 	
 	return left.numAtts;
-
 }
 
 

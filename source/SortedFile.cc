@@ -45,7 +45,7 @@ void * producer1 (void *arg) {
 	    }
 	    // cout << "Load finish" << endl;
 		t->myPipe->ShutDown ();
-		cout << " producer: inserted " << counter << " recs into the pipe\n";
+		// cout << " producer: inserted " << counter << " recs into the pipe\n";
 	}
 
 }
@@ -74,10 +74,10 @@ void * consumer1 (void *arg) {
 	t->f->AddPage(&p, curpage);
 	p.EmptyItOut();
 	curpage++;
-	cout << "consumer - f.GetLength() = " << t->f->GetLength() << endl;
+	// cout << "consumer - f.GetLength() = " << t->f->GetLength() << endl;
 	// f.Close();
 	t->myPipe->ShutDown();
-	cout << " Consumer: removed " << counter << " recs from the pipe\n";
+	// cout << " Consumer: removed " << counter << " recs from the pipe\n";
 	
 }
 
@@ -96,16 +96,16 @@ void SortedFile::Merge(){
 	// thread to read sorted data from output pipe (dumped by BigQ)
 	pthread_t thread2;
 	pthread_create (&thread2, NULL, consumer1, (void *)&lutils_consumer);
-	cout << "produce consumer threads started" << endl;
+	// cout << "produce consumer threads started" << endl;
 	BigQ bq (input, output, so, runLen);
 	cout << "BigQ started" << endl;
 	pthread_join (thread1, NULL);
 	pthread_join (thread2, NULL);
-	cout << "merge Done" << endl;
+	// cout << "merge Done" << endl;
 
 	curpage = 0;
 	totalpages = f.GetLength();
-	cout << "merge - f.GetLength() = " << f.GetLength() << endl;
+	// cout << "merge - f.GetLength() = " << f.GetLength() << endl;
 }
 
 void SortedFile::Switchmode(mode change){
@@ -128,7 +128,7 @@ void SortedFile::Switchmode(mode change){
 			 cout << f.GetLength()-2 << endl;
 			curpage = f.GetLength()-2;
 			f.GetPage(&p,curpage);
-			 cout << "done" << endl;
+			 // cout << "done" << endl;
 			status = DBFILE_W;
 			return;
 		}
@@ -138,7 +138,7 @@ void SortedFile::Switchmode(mode change){
 int SortedFile::Create (char *f_path, fType f_type, void *startup) {
     try{
     	db_path = f_path;
-    	cout << "create = " << f_path << endl;
+    	// cout << "create = " << f_path << endl;
 	    f.Open(0,f_path);
 	    f.AddPage (&p, 0);
 	    curpage = 0;
@@ -170,13 +170,13 @@ void SortedFile::Load (Schema &f_schema, char *path) {
 	// thread to read sorted data from output pipe (dumped by BigQ)
 	pthread_t thread2;
 	pthread_create (&thread2, NULL, consumer1, (void *)&lutils_consumer);
-	cout << "produce consumer threads started" << endl;
+	// cout << "produce consumer threads started" << endl;
 	BigQ bq (input, output, so, runLen);
 	cout << "BigQ started" << endl;
 	pthread_join (thread1, NULL);
 	pthread_join (thread2, NULL);
-	cout << "load Done" << endl;
-	cout << "Load - f.GetLength() = " << f.GetLength() << endl;
+	// cout << "load Done" << endl;
+	// cout << "Load - f.GetLength() = " << f.GetLength() << endl;
 
 	// TODO update currpage & totalpages
 	curpage = 0;
@@ -186,7 +186,7 @@ void SortedFile::Load (Schema &f_schema, char *path) {
 
 int SortedFile::Open (char *f_path) {
 	try{
-		cout << "SortedFile::Open()" << endl;
+		// cout << "SortedFile::Open()" << endl;
 		char name[100];
 		sprintf(name, "%s.metadata", f_path);
 
@@ -207,7 +207,7 @@ int SortedFile::Open (char *f_path) {
 		f.Open(1,f_path);
 		status = DBFILE_R;
 		totalpages = f.GetLength();
-		cout << "open - f.GetLength() = " << f.GetLength() << endl;
+		// cout << "open - f.GetLength() = " << f.GetLength() << endl;
 		MoveFirst();
 		return 1;
 	}
@@ -218,7 +218,7 @@ int SortedFile::Open (char *f_path) {
 }
 
 void SortedFile::MoveFirst () {
-	cout << "SortedFile::MoveFirst ()" << endl;
+	// cout << "SortedFile::MoveFirst ()" << endl;
 	Switchmode(DBFILE_R);
 	p.EmptyItOut();
 	curpage = 0;
@@ -227,11 +227,12 @@ void SortedFile::MoveFirst () {
 
 int SortedFile::Close () {
 	// cout << f.GetLength() << "\n" ;
+	// cout << "SortedFile::Close()" << endl;
 	try{
 			Switchmode(DBFILE_R);
 			p.EmptyItOut();
 			f.Close();
-			cout << "close - f.GetLength() = " << f.GetLength() << endl;
+			// cout << "close - f.GetLength() = " << f.GetLength() << endl;
 			return 1;	
 	}
 	catch(...){
@@ -337,74 +338,102 @@ int SortedFile::CompareOrders(OrderMaker &sort, CNF &cnf, OrderMaker *& query){
 	return 1;
 }
 
-// int SortedFile::Searchbinary (Record &fetchme, CNF &cnf, Record &literal, OrderMaker *& query) {
-// 	ComparisonEngine comp;
-// 	cout << "Binary searching" << endl;
-// 	int k = 0;
-// 	if(GetNext(fetchme)){
-// 		k = comp.CompareSort(&fetchme, &literal, query, &cnf);
-// 		if(k == 1){
-// 			return 1;
-// 		}
-// 		else{
-// 			int step = 1;
-// 			int m = step + curpage;
-// 			int start = curpage; 
-// 			int end = f.GetLength() - 1;
-// 			while(m <= f.GetLength()-2){
-// 				p.EmptyItOut();
-// 	 			f.GetPage(&p,m);
-// 	 			if(GetNext(fetchme)){
-// 	 				k = comp.CompareSort(&fetchme, &literal, query, &cnf);
-// 					if(k == 1){
+int SortedFile::check_file(OrderMaker * query){
+	int entries = 0;
+	curpage = 0;
+	Record recs[2];
+	p.EmptyItOut();
+	f.GetPage(&p,curpage);
+	Record *lasts = NULL, *prevs = NULL;
+	int last_page = 0; int prev_page = 0;
+	int errs = 0;
+	int j = 0;
+	ComparisonEngine comp;
+	while (GetNext(recs[j%2])) {
+		entries++;
+		prevs = lasts;
+		prev_page = last_page;
+		lasts = &recs[j%2];
+		// Schema lineitem ("../source/catalog", "lineitem");
+		if(j == 0){
+			// lasts->Print(&lineitem);
+		}
+		last_page = curpage;
+		if (prevs && lasts) {
+			if (comp.Compare (prevs, lasts, &so) == 1) {
+				errs++;
+				// Previous page and last page should be different 
+				// and last_page should be multiple of runlength
+				cout << j << " " << prev_page << " " << last_page << endl;
+				// prevs->Print (&mySchema);
+				// lasts->Print (&mySchema);
+				// if(runlen > f.GetLength()){
+				// 	exit(-1);
+				// }
+				
+			}
+		}
+		j++;
+	}
+	curpage = 0;
+	p.EmptyItOut();	
+	// cout << "Checked " << j << ", Errors: " << errs << ", totalpages: " << f.GetLength() << endl;
+}
 
-// 					}
-// 	 			}
-// 			}
-			
+int SortedFile::Searchbinary (Record &fetchme, CNF &cnf, Record &literal, OrderMaker *& query) {
+	ComparisonEngine comp;
 
-
-// 		 	int r = f.GetLength()-2;
-// 		 	int flag = 0;
-// 		 	int m;
-// 		    while( l <= r )
-// 		    {
-// 		        m = l + (r-l)/2;
-// 		        cout << l << m << r << endl;
-// 		        p.EmptyItOut();
-// 		 		f.GetPage(&p,m);
-// 		 		if(GetNext(fetchme)){
-// 		 			k = comp.CompareSort(&fetchme, &literal, query, &cnf);
-// 					if(k == 1){
-// 						if(flag == 1){
-// 							p.EmptyItOut();
-// 					 		f.GetPage(&p,m-1);
-// 					 		return 0;
-// 						}
-// 						flag = 1;
-// 						r = m - 1;
-// 					}
-// 					else{
-// 						l = m + 1;
-// 						flag = 0;
-// 					}		 		
-// 		 		}
-// 		 		else{
-// 		 			cout << "No records" << endl;
-// 		 			return 0;
-// 		 		}
-// 		        // if( A[m] == key ) // first comparison
-// 		        //     return m;
-		 
-// 		        // if( A[m] < key ) // second comparison
-// 		        //     l = m + 1;
-// 		        // else
-// 		        //     r = m - 1;
-// 		    }
-// 		}
-// 	}
-// 	return 0;
-// }
+	// cout << "Binary searching" << endl;
+	int k = 0;
+	// query->Print();
+	if(GetNext(fetchme)){
+		k = comp.CompareSort(&fetchme, &literal, query, &cnf);
+		if(k == 1){
+			// check_file(query);
+			// cout << curpage << " " << f.GetLength() << endl;
+			// cout << "getting 1" << endl;
+			return -1;
+		}
+		else if(k == 0){
+			return 1;
+		}
+		else{
+			// cout << "Doing binary search" << endl;
+		    int m;
+		    int l = curpage;
+		    int r = f.GetLength()-2;
+		    int start = curpage;
+		    while(l <= r )
+		    {	
+		        m = l + (r-l)/2;
+		        // cout << "checking " << m  << "start " << l << "End " << r << endl;
+		        p.EmptyItOut();
+				f.GetPage(&p,m);
+				if(GetNext(fetchme)){
+					k = comp.CompareSort(&fetchme, &literal, query, &cnf);
+					if( k == 0 ) {
+						r = m;
+						// break;
+					}
+				 	else if(k == -1){
+				 		l = m + 1;
+				 	}
+				 	else{
+				 		r = m - 1;
+				 	}
+				}
+				else{
+					cout << "error" << endl;
+				}
+		    }
+		    start = min(l,r);
+		    curpage = start;
+		    p.EmptyItOut();
+			f.GetPage(&p,curpage);
+		}
+	}
+	return -1;
+}
 
 int SortedFile::GetNext (Record &fetchme, CNF &cnf, Record &literal) {
 	ComparisonEngine comp;
@@ -412,20 +441,24 @@ int SortedFile::GetNext (Record &fetchme, CNF &cnf, Record &literal) {
 	// cout << "prnting cnf and  ordermaker" << endl;
 	// so.Print();
 	Switchmode(DBFILE_R);
-	// if(query == NULL){
-	// 	if(CompareOrders(so,cnf,query)){
-	// 		cout << "printing in getnext" << endl;
-	// 		query->Print();
-	// 		if(Searchbinary(fetchme, cnf, literal, query) == 1){
-	// 			return 1;
-	// 		}
-	// 	}
-	// 	else{
-	// 		delete query;
-	// 		query = NULL;
-	// 	}
-	// }
-	// cout << f.GetLength() << endl;
+	if(query == NULL){
+		if(CompareOrders(so,cnf,query)){
+			// cout << "printing in getnext" << endl;
+			// query->Print();
+			int result = Searchbinary(fetchme, cnf, literal, query);
+			if( result == 1){
+				return 1;
+			}
+			else if(result == 0){
+				return 0;
+			}
+		}
+		else{
+			delete query;
+			query = NULL;
+		}
+	}
+	// cout <<  curpage << f.GetLength() << endl;
 	while(GetNext(fetchme)){
 		// cout << "status" << endl;
 		if (comp.Compare (&fetchme, &literal, &cnf)){

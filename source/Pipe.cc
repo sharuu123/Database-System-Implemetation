@@ -1,7 +1,7 @@
 #include "Pipe.h"
 
-#include <iostream>
-#include <stdlib.h> 
+#include <iostream> 
+#include <stdlib.h>
 
 Pipe :: Pipe (int bufferSize) {
 
@@ -28,14 +28,12 @@ Pipe :: Pipe (int bufferSize) {
 }
 
 Pipe :: ~Pipe () {
-
 	// free everything up!
 	delete [] buffered;
 
 	pthread_mutex_destroy (&pipeMutex);
 	pthread_cond_destroy (&producerVar);
 	pthread_cond_destroy (&consumerVar);
-	
 }
 
 

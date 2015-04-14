@@ -1,4 +1,4 @@
-CC = g++ -O2 -g -Wno-deprecated -Wno-write-strings 
+CC = g++ -O2 -std=c++0x -g -Wno-deprecated -Wno-write-strings 
 LDFLAGS := -pthread -L./
 tag = -i
 
@@ -52,7 +52,7 @@ gtest_main.o : $(FUSED_GTEST_H) $(GTEST_MAIN_CC)
 
 # make all
 # generates main gtesting.o and test scripts
-all: main gtesting.o test1 test2
+all: main gtesting.o test
 
 # make test
 # generates only the test script - please do make all
@@ -62,11 +62,17 @@ test1: Record.o Comparison.o ComparisonEngine.o Schema.o File.o  BigQ.o Pipe.o D
 test2: Record.o Comparison.o ComparisonEngine.o Schema.o File.o  BigQ.o Pipe.o DBFile.o HeapFile.o SortedFile.o y.tab.o lex.yy.o test2.o 
 	$(CC) -o $(BIN)test2 $(BIN)Record.o $(BIN)Comparison.o $(BIN)ComparisonEngine.o $(BIN)Schema.o $(BIN)File.o  $(BIN)BigQ.o $(BIN)Pipe.o  $(BIN)HeapFile.o $(BIN)SortedFile.o $(BIN)DBFile.o $(BIN)y.tab.o $(BIN)lex.yy.o $(BIN)test2.o -lfl $(LDFLAGS)
 
-main: Record.o Comparison.o ComparisonEngine.o Schema.o File.o y.tab.o lex.yy.o  BigQ.o Pipe.o DBFile.o HeapFile.o SortedFile.o main.o
-	$(CC) -o $(BIN)main $(BIN)Record.o $(BIN)Comparison.o $(BIN)ComparisonEngine.o $(BIN)Schema.o $(BIN)File.o $(BIN)y.tab.o $(BIN)lex.yy.o $(BIN)BigQ.o $(BIN)Pipe.o $(BIN)HeapFile.o $(BIN)SortedFile.o $(BIN)DBFile.o $(BIN)main.o -lfl $(LDFLAGS)
+test: Record.o Comparison.o ComparisonEngine.o Schema.o File.o y.tab.o lex.yy.o  BigQ.o Pipe.o DBFile.o RelOp.o Function.o yyfunc.tab.o lex.yyfunc.o HeapFile.o SortedFile.o Statistics.o test.o
+	$(CC) -o $(BIN)test $(BIN)Record.o $(BIN)Comparison.o $(BIN)ComparisonEngine.o $(BIN)Schema.o $(BIN)File.o $(BIN)y.tab.o $(BIN)lex.yy.o $(BIN)RelOp.o $(BIN)Function.o $(BIN)yyfunc.tab.o $(BIN)lex.yyfunc.o $(BIN)BigQ.o $(BIN)Pipe.o $(BIN)HeapFile.o $(BIN)SortedFile.o $(BIN)DBFile.o $(BIN)Statistics.o $(BIN)test.o -lfl $(LDFLAGS)
+
+main: Record.o Comparison.o ComparisonEngine.o Schema.o File.o y.tab.o lex.yy.o  BigQ.o Pipe.o DBFile.o RelOp.o Function.o yyfunc.tab.o lex.yyfunc.o HeapFile.o SortedFile.o main.o
+	$(CC) -o $(BIN)main $(BIN)Record.o $(BIN)Comparison.o $(BIN)ComparisonEngine.o $(BIN)Schema.o $(BIN)File.o $(BIN)y.tab.o $(BIN)lex.yy.o $(BIN)RelOp.o $(BIN)Function.o $(BIN)yyfunc.tab.o $(BIN)lex.yyfunc.o $(BIN)BigQ.o $(BIN)Pipe.o $(BIN)HeapFile.o $(BIN)SortedFile.o $(BIN)DBFile.o $(BIN)main.o -lfl $(LDFLAGS)
 
 gtesting.o: gtest-all.o gtest_main.o BigQ.o Pipe.o
 	$(CC) $(BIN)Record.o $(BIN)Comparison.o $(BIN)ComparisonEngine.o $(BIN)Schema.o $(BIN)File.o $(BIN)y.tab.o $(BIN)lex.yy.o $(BIN)HeapFile.o $(BIN)SortedFile.o $(BIN)BigQ.o $(BIN)Pipe.o $(BIN)DBFile.o $(BIN)gtest_main.o $(BIN)gtest-all.o $(SOURCE)gtesting.cc -o $(BIN)$@ $(LDFLAGS)
+
+test.o: $(SOURCE)test.cc
+	$(CC) -g -c  $< -o $(BIN)$@ $(LDFLAGS)
 	
 test1.o: $(SOURCE)test1.cc
 	$(CC) -g -c  $< -o $(BIN)$@ $(LDFLAGS)
@@ -75,6 +81,9 @@ test2.o: $(SOURCE)test2.cc
 	$(CC) -g -c  $< -o $(BIN)$@ $(LDFLAGS)
 
 main.o: $(SOURCE)main.cc
+	$(CC) -g -c  $< -o $(BIN)$@
+
+Statistics.o: $(SOURCE)Statistics.cc
 	$(CC) -g -c  $< -o $(BIN)$@
  	
 Comparison.o: $(SOURCE)Comparison.cc
@@ -95,6 +104,12 @@ DBFile.o: $(SOURCE)DBFile.cc
 File.o: $(SOURCE)File.cc
 	$(CC) -g -c  $< -o $(BIN)$@
 
+RelOp.o: $(SOURCE)RelOp.cc
+	$(CC) -g -c $< -o $(BIN)$@
+
+Function.o: $(SOURCE)Function.cc
+	$(CC) -g -c $< -o $(BIN)$@
+
 Record.o: $(SOURCE)Record.cc
 	$(CC) -g -c  $< -o $(BIN)$@
 
@@ -113,17 +128,30 @@ y.tab.o: $(SOURCE)Parser.y
 	sed $(tag) $(SOURCE)y.tab.c -e "s/  __attribute__ ((__unused__))$$/# ifndef __cplusplus\n  __attribute__ ((__unused__));\n# endif/" 
 	g++ -c $(SOURCE)y.tab.c -o $(BIN)$@
 
+yyfunc.tab.o: $(SOURCE)ParserFunc.y
+	yacc -p "yyfunc" -b "yyfunc" -d $(SOURCE)ParserFunc.y
+	mv yyfunc.tab.* $(SOURCE)
+	sed $(tag) $(SOURCE)yyfunc.tab.c -e "s/  __attribute__ ((__unused__))$$/# ifndef __cplusplus\n  __attribute__ ((__unused__));\n# endif/" 
+	g++ -c $(SOURCE)yyfunc.tab.c -o $(BIN)$@
+
 lex.yy.o: $(SOURCE)Lexer.l
 	lex  $(SOURCE)Lexer.l
 	mv lex.* $(SOURCE)
 	gcc  -c $(SOURCE)lex.yy.c -o $(BIN)$@
 
+lex.yyfunc.o: $(SOURCE)LexerFunc.l
+	lex -Pyyfunc $(SOURCE)LexerFunc.l
+	mv lex.* $(SOURCE)
+	gcc  -c $(SOURCE)lex.yyfunc.c -o $(BIN)$@
+
 clean: 
 	rm -f $(BIN)*.o
 	rm -f $(BIN)*.out
-	rm -f $(BIN)y.tab.c
-	rm -f $(BIN)lex.yy.c
-	rm -f $(BIN)y.tab.h
+	rm -f $(BIN)*.metadata
+	rm -f $(SOURCE)y.tab.*
+	rm -f $(SOURCE)yyfunc.tab.*
+	rm -f $(SOURCE)lex.yy.*
+	rm -f $(SOURCE)lex.yyfunc*
 	rm -f $(BIN)*.bin
 	rm -f $(BIN)main $(BIN)test
 	rm -f ./DATA/10M/*.metadata

@@ -209,7 +209,34 @@ TEST(lineitem_test, Mock_Open_test){
 }
 
 
-
+TEST(lineitem_test, createallbins){
+	DBFile db;
+	char *supplier = "supplier"; 
+	char *partsupp = "partsupp"; 
+	char *part = "part"; 
+	char *nation = "nation"; 
+	char *customer = "customer"; 
+	char *orders = "orders"; 
+	char *region = "region"; 
+	char *lineitem = "lineitem"; 
+	Schema sSchema (catalog_path, "supplier");
+	Schema psSchema (catalog_path, "partsupp");
+	Schema pSchema (catalog_path, "part");
+	Schema nSchema (catalog_path, "nation");
+	Schema cSchema (catalog_path, "customer");
+	Schema oSchema (catalog_path, "orders");
+	Schema rSchema (catalog_path, "region");
+	Schema lSchema (catalog_path, "lineitem");
+	// EXPECT_CALL(db,Load(_,_)).Times(AtLeast(1));
+	EXPECT_EQ(1,open_test(db, supplier, sSchema));
+	EXPECT_EQ(1,open_test(db, partsupp, psSchema));
+	EXPECT_EQ(1,open_test(db, part, pSchema));
+	EXPECT_EQ(1,open_test(db, nation, nSchema));
+	EXPECT_EQ(1,open_test(db, customer, cSchema));
+	EXPECT_EQ(1,open_test(db, orders, oSchema));
+	EXPECT_EQ(1,open_test(db, region, rSchema));
+	EXPECT_EQ(1,open_test(db, lineitem, lSchema));
+}
 
 // TEST(regions_test, OpenCreatetest){
 // 	// DBFile db;

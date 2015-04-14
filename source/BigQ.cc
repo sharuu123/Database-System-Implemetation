@@ -1,121 +1,15 @@
 #include "BigQ.h"
 
-OrderMaker G_sortorder;
-ComparisonEngine G_comp;
-static int G_runlen=0;
-static int G_curSizeInBytes = 0;
-static BigQ_input G_input;
+// OrderMaker G_sortorder;
+// ComparisonEngine G_comp;
+// static int G_runlen=0;
+// static int G_curSizeInBytes = 0;
+// static BigQ_input G_input;
 
 // Schema mySchema ("../source/catalog", "orders");
 
-typedef enum {source, destination} merger_type;
-typedef enum {initial, merge_done, done, finish,  first_done , second_done , compare, read_first, read_second} merger_state;
-merger_state block_state = initial;
-vector<Record *> overflow;
-vector<Record *> excess;
-
-class block
-{	
-public:
-	block(){
-		count = 0;
-		curpage = 0;
-	}
-	Record rec;
-	Page p;
-	int curpage;
-	int count;
-	int getRecord(){
-		if(!p.GetFirst(&rec)){
-			return 0;
-		}
-		return 1;
-	}
-};
-
-class merger
-{	
-public:
-	merger(){
-		curpage = 0;
-		totalpages = 1;
-	}
-	~merger(){
-		delete first;
-		delete second;
-	}
-	File f;
-	Page p;
-	int curpage;
-	int totalpages;
-	char * name;
-	block *first;
-	block *second;
-	merger_type mtype;
-	int loadpage(int flag){
-		if(flag == 0){
-			first->p.EmptyItOut();
-			if(first->curpage < (totalpages-1) && first->count > 0){
-				f.GetPage(&first->p,first->curpage);
-				first->count--;
-				return 1;
-			}
-			return 0;
-		} else {
-			second->p.EmptyItOut();
-			if(second->curpage < (totalpages-1) && second->count > 0){
-				f.GetPage(&second->p,second->curpage);
-				second->count--;
-				return 1;
-			}
-			return 0;
-		}
-		
-	}
-	int AddRec(Record &rec,int max_page){
-		if(curpage >= max_page){
-			// Overflow when merging blocks
-			// Store to extra vector list and send them at the end
-			Record * curr = new Record();
-			curr->Consume(&rec);
-			excess.push_back(curr);
-		}
-		else{
-			if(!p.Append(&rec)){
-				if(curpage >= max_page-1){
-					Record * curr = new Record();
-					curr->Consume(&rec);
-					// Overflow when merging blocks
-					// Store to extra vector list and send them at the end
-					excess.push_back(curr);
-				}
-				else{
-					f.AddPage(&p, curpage);
-					p.EmptyItOut();
-					curpage++;totalpages++;
-					p.Append(&rec);
-				}
-			}
-		}
-	}
-};
-
-// compare function for the vector sort.
-class Compare{
-	public:
-	bool operator()(Record * R1, Record *R2)
-	{
-	    if((G_comp).Compare(R1,R2,&(G_sortorder)) == -1){
-	    	return true;
-	    }
-	    else{
-	    	return false;
-	    }
-	}
-}mysorter;
-
 // Initial creation of temp files
-int Create (char* s, merger *merge_file) {
+int BigQ::Create (char* s, merger *merge_file) {
     try{
     	merge_file->name = s;
 	    merge_file->f.Open(0,s);
@@ -129,7 +23,7 @@ int Create (char* s, merger *merge_file) {
     }
 }
 
-int GetNext (Record &fetchme, merger *merge_file) {
+int BigQ::GetNext (Record &fetchme, merger *merge_file) {
 	if(merge_file->p.GetFirst(&fetchme)){
 		return 1;
 	}
@@ -147,7 +41,7 @@ int GetNext (Record &fetchme, merger *merge_file) {
 }
 
 // helper function to send the file
-int SendAll(merger *merge_file, BigQ_input *t){
+int BigQ::SendAll(merger *merge_file, BigQ_input *t){
 	merge_file->curpage = 0;
 	merge_file->p.EmptyItOut();
 	merge_file->f.GetPage(&(merge_file->p),merge_file->curpage);
@@ -158,16 +52,21 @@ int SendAll(merger *merge_file, BigQ_input *t){
 }
 
 // finally sending the sorted
-int SendSocket(merger *merge_file, BigQ_input *t){
+int BigQ::SendSocket(merger *merge_file, BigQ_input *t){
+	// cout << merge_file->name << endl;
 	merge_file->curpage = 0;
 	merge_file->p.EmptyItOut();
+	// cout << "test ?" << endl;
 	merge_file->f.GetPage(&(merge_file->p),merge_file->curpage);
+	// cout << "works ?" << endl;
 	Record temp;
 	int val = 0;
+	mysorter.s=so;
+	// merge_file->ex=excess;
 	sort(excess.begin(),excess.end(),mysorter);
 	while(GetNext(temp,merge_file) == 1){
 		while(val< excess.size()){
-			if(G_comp.Compare (&temp, excess[val], &(G_sortorder)) != 1){
+			if(G_comp.Compare (&temp, excess[val], so) != 1){
 				break;
 			}
 			else{
@@ -184,10 +83,11 @@ int SendSocket(merger *merge_file, BigQ_input *t){
 		t->out->Insert(excess[val]);
 		val++;
 	}
+	// cout << "sendng" << endl;
 }
 
 // This is a helper function to check  the unsorted records after each merge
-int check_file(merger *merge_file, int runlen){
+int BigQ::check_file(merger *merge_file, int runlen){
 	int entries = 0;
 	merge_file->curpage = 0;
 	Record recs[2];
@@ -204,7 +104,7 @@ int check_file(merger *merge_file, int runlen){
 		lasts = &recs[j%2];
 		last_page = merge_file->curpage;
 		if (prevs && lasts) {
-			if (G_comp.Compare (prevs, lasts, &(G_sortorder)) == 1) {
+			if (G_comp.Compare (prevs, lasts, so) == 1) {
 				errs++;
 				// Previous page and last page should be different 
 				// and last_page should be multiple of runlength
@@ -226,12 +126,13 @@ int check_file(merger *merge_file, int runlen){
 
 
 int vals = 0;
-int savelist (vector<Record *> v, merger *merge_file) {
+int BigQ::savelist (vector<Record *> v, merger *merge_file) {
 	// cout << " Writing from: " << merge_file->curpage << endl;
 	vals = vals + v.size();
 	merge_file->p.EmptyItOut();
+	mysorter.s=so;
 	sort(v.begin(),v.end(),mysorter);
-	int count = G_runlen;
+	int count = rlen;
 	int added_file = 0;
 	int added_overflow = 0;
 	bool saved = false;
@@ -282,10 +183,10 @@ int savelist (vector<Record *> v, merger *merge_file) {
 	}
 }
 
-
-void *TPMMS (void *arg) {
+// void *TPMMS (void *arg) {
+void* BigQ::TPMMS () {
 	
-	BigQ_input *t = (BigQ_input *) arg;
+	// BigQ_input *t = (BigQ_input *) arg;
 	//creating two files
 	merger *first_file = new merger();
 	merger *second_file = new merger();
@@ -297,6 +198,27 @@ void *TPMMS (void *arg) {
 	Create(second_path,second_file);
 	// Created two files for the two way merger sort
 
+		// compare function for the vector sort.
+	// class Compare{
+	// 	public:
+	// 	OrderMaker *s;
+	// 	Compare(OrderMaker *sort) {
+	// 		s = sort;
+	// 	}
+	// 	bool operator()(Record * R1, Record *R2)
+	// 	{
+	// 		ComparisonEngine comp;
+	// 	    if((comp).Compare(R1,R2,s) == -1){
+	// 	    	return true;
+	// 	    }
+	// 	    else{
+	// 	    	return false;
+	// 	    }
+	// 	}
+	// };
+
+	// Compare mysorter(so);
+
 	vector<Record *> v;
 
 	G_curSizeInBytes = 0;
@@ -305,7 +227,7 @@ void *TPMMS (void *arg) {
 		if(t->in->Remove(curr)){
 			char *b = curr->GetBits();
 			int rec_size = ((int *) b)[0];
-			if (G_curSizeInBytes + rec_size < (PAGE_SIZE)*G_runlen) {
+			if (G_curSizeInBytes + rec_size < (PAGE_SIZE)*rlen) {
 				G_curSizeInBytes += rec_size;
 				// pq.push(curr);
 				v.push_back(curr);
@@ -331,6 +253,7 @@ void *TPMMS (void *arg) {
 	pending.reserve( v.size() + overflow.size() ); // preallocate memory
 	pending.insert( pending.end(), v.begin(), v.end() );
 	pending.insert( pending.end(), overflow.begin(), overflow.end() );
+	mysorter.s=so;
 	sort(pending.begin(),pending.end(),mysorter);
 	// cout << v.size() << " " << overflow.size() << " " << pending.size() << endl;
 
@@ -357,7 +280,7 @@ void *TPMMS (void *arg) {
 
 	// cout << "Initial " << first_file->totalpages << " " << first_file->f.GetLength() << endl;
 	
-	check_file(first_file,G_runlen);
+	check_file(first_file,rlen);
 	// SendAll(first_file,t);
 	// t->out->ShutDown();
 	// exit(-1);
@@ -369,18 +292,22 @@ void *TPMMS (void *arg) {
 	block *first = new block();
 	first->curpage = 0;
 	block *second = new block();
-	second->curpage = G_runlen;
+	second->curpage = rlen;
 	first_file->first = first;
 	first_file->second = second;
 	second_file->first = new block();
 	second_file->second = new block();
 	second_file->first->curpage = 0;
-	second_file->second->curpage = G_runlen;
+	second_file->second->curpage = rlen;
 
-	int cur_runlength = G_runlen;
+	int cur_runlength = rlen;
 	merger * source_file = first_file;
 	merger * destination_file = second_file;
 	int max_page = 0;
+	block_state = initial;
+
+	source_file->ex=excess;
+
 	// cout << "Initial start" << endl;
 	cout << "\nTPMMS Merge start\n" << endl;
 	while(block_state != merge_done){
@@ -437,7 +364,7 @@ void *TPMMS (void *arg) {
 			
 			case compare:
 				// cout << "compare" << endl;
-				if((G_comp).Compare(&(source_file->first->rec),&(source_file->second->rec),&(G_sortorder)) != 1){
+				if((G_comp).Compare(&(source_file->first->rec),&(source_file->second->rec),so) != 1){
 					// cout << "add firrst" << endl;
 					destination_file->AddRec(source_file->first->rec,max_page);
 					block_state = read_first;
@@ -591,10 +518,14 @@ void *TPMMS (void *arg) {
 	cout << "TPMMS Merge done\n" << endl;
 	// cout << "Sending Records " << endl;
 	// Sending records
+	excess=destination_file->ex;
 	SendSocket(destination_file,t);
 
 	t->out->ShutDown();
-
+	// remove(first_file->name);
+	// remove(second_file->name);
+	// remove ("Bigq.bin"); 
+	// remove ("Bigq_temp.bin"); 
 	delete first_file;
 	delete second_file;
 }
@@ -606,14 +537,19 @@ BigQ :: BigQ (Pipe &in, Pipe &out, OrderMaker &sortorder, int runlen) {
  // 	into the out pipe
 
  //    finally shut down the out pipe
-	G_sortorder = sortorder;
-	cout << "BigQ constructor " << endl;
-	G_sortorder.Print();
-	G_runlen = runlen;
-	G_input = {&in, &out};
+	// G_sortorder = sortorder;
+	// G_runlen = runlen;
+	// G_input = {&in, &out};
 
-	pthread_t thread;
-	pthread_create (&thread, NULL, TPMMS , (void *)&G_input);
+	t = new BigQ_input;
+	*t = {&in,&out};
+	rlen = runlen;
+	so = new OrderMaker;
+	*so = sortorder;
+
+	// pthread_t thread;
+	pthread_create (&thread, NULL, TPMMS_helper , this);
+	// pthread_create (&thread, NULL, TPMMS , (void *)&G_input);
 
 	// pthread_join (thread, NULL);
 

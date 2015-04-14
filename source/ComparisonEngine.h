@@ -18,6 +18,7 @@ class ComparisonEngine {
 private:
 
 	int Run(Record *left, Record *literal, Comparison *c);
+	int CompareRun(Record *left, Record *literal, Comparison *c);
 	int Run(Record *left, Record *right, Record *literal, Comparison *c);
 
 public:

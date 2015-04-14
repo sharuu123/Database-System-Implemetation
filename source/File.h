@@ -51,33 +51,33 @@ class File {
 private:
 
 	int myFilDes;
-	off_t curLength; 
+	off_t curLength; //this was private in Chris's version
 
 public:
 
 	File ();
-	virtual ~File ();
+	~File ();
 
 	// returns the current length of the file, in pages
-	virtual off_t GetLength ();
+	off_t GetLength ();
 
 	// opens the given file; the first parameter tells whether or not to
 	// create the file.  If the parameter is zero, a new file is created
 	// the file; if notNew is zero, then the file is created and any other
 	// file located at that location is erased.  Otherwise, the file is
 	// simply opened
-	virtual void Open (int length, char *fName);
+	void Open (int length, char *fName);
 
 	// allows someone to explicitly get a specified page from the file
-	virtual void GetPage (Page *putItHere, off_t whichPage);
+	void GetPage (Page *putItHere, off_t whichPage);
 
 	// allows someone to explicitly write a specified page to the file
 	// if the write is past the end of the file, all of the new pages that
 	// are before the page to be written are zeroed out
-	virtual void AddPage (Page *addMe, off_t whichPage);
+	void AddPage (Page *addMe, off_t whichPage);
 
 	// closes the file and returns the file length (in number of pages)
-	virtual int Close ();
+	int Close ();
 
 };
 
